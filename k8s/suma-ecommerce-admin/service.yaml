@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: suma-ecommerce-admin-service
+  namespace: suma-ecommerce-admin
+  labels:
+    app: suma-ecommerce-admin
+spec:
+  selector:
+    app: suma-ecommerce-admin
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+    protocol: TCP
+  type: ClusterIP

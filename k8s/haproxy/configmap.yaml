@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haproxy-config
+  namespace: haproxy
+  labels:
+    app: haproxy-loadbalancer
+data:
+  haproxy.cfg: |
+    # HAProxy Configuration for API Load Balancing
+    global
+        daemon
+        maxconn 4096
+        log stdout local0
+        stats socket /tmp/haproxy.sock mode 600 level admin
+        stats timeout 2m
+
+    defaults
+        mode http
+        timeout connect 5000ms
+        timeout client 50000ms
+        timeout server 50000ms
+        option httplog
+        option dontlognull
+        option forwardfor
+        retries 3
+
+    # Frontend for API requests (port 8888)
+    frontend api_frontend
+        bind *:8888
+        mode http
+        
+        # Health check endpoint
+        acl is_health path_beg /health
+        use_backend health_check if is_health
+        
+        # Default backend for all API requests
+        default_backend api_servers
+
+    # Backend with the two API servers
+    backend api_servers
+        mode http
+        balance roundrobin
+        
+        # TCP health check (ping) - no HTTP health check needed
+        # Just check if the server is reachable on the port
+        
+        # Primary API server (HTTPS) - TCP check only
+        server primary_api api.public.suma-honda.id:443 check weight 100 inter 10s fall 3 rise 2 ssl verify none
+        
+        # Backup API server (HTTPS - will be used when primary fails)
+        server backup_api api.suma-honda.id:443 check weight 100 backup inter 10s fall 3 rise 2 ssl verify none
+
+    # Health check backend
+    backend health_check
+        mode http
+        http-request return status 200 content-type text/plain string "HAProxy Healthy"
+
+    # Stats interface
+    frontend stats
+        bind *:8404
+        stats enable
+        stats uri /stats
+        stats refresh 10s
+        stats show-legends
+        stats admin if TRUE

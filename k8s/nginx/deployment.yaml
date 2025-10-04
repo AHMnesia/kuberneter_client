@@ -1,0 +1,237 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-proxy
+  namespace: nginx-system
+  labels:
+    app: nginx-proxy
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3  # Keep only 3 old ReplicaSets
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0  # Tidak boleh ada pod yang down
+      maxSurge: 1        # Maksimal 1 pod tambahan saat update
+  selector:
+    matchLabels:
+      app: nginx-proxy
+  template:
+    metadata:
+      labels:
+        app: nginx-proxy
+    spec:
+      serviceAccountName: nginx-service-account
+      automountServiceAccountToken: false
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 443
+          name: https
+        - containerPort: 8080
+          name: metrics
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          failureThreshold: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: nginx-conf-d
+          mountPath: /etc/nginx/conf.d
+        - name: nginx-www
+          mountPath: /var/www/html
+        # Mount per file TLS secret agar path file konsisten dan mudah maintenance
+        - name: localhost-ssl
+          mountPath: /etc/nginx/ssl/localhost/certificate.crt
+          subPath: tls.crt
+          readOnly: true
+        - name: localhost-ssl
+          mountPath: /etc/nginx/ssl/localhost/certificate.key
+          subPath: tls.key
+          readOnly: true
+        - name: suma-ecommerce-admin-ssl
+          mountPath: /etc/nginx/ssl/suma-ecommerce-admin/certificate.crt
+          subPath: tls.crt
+          readOnly: true
+        - name: suma-ecommerce-admin-ssl
+          mountPath: /etc/nginx/ssl/suma-ecommerce-admin/certificate.key
+          subPath: tls.key
+          readOnly: true
+        - name: suma-ecommerce-client-ssl
+          mountPath: /etc/nginx/ssl/suma-ecommerce-client/certificate.crt
+          subPath: tls.crt
+          readOnly: true
+        - name: suma-ecommerce-client-ssl
+          mountPath: /etc/nginx/ssl/suma-ecommerce-client/certificate.key
+          subPath: tls.key
+          readOnly: true
+        - name: suma-office-ssl
+          mountPath: /etc/nginx/ssl/suma-office/certificate.crt
+          subPath: tls.crt
+          readOnly: true
+        - name: suma-office-ssl
+          mountPath: /etc/nginx/ssl/suma-office/certificate.key
+          subPath: tls.key
+          readOnly: true
+        - name: suma-monitoring-ssl
+          mountPath: /etc/nginx/ssl/suma-monitoring/certificate.crt
+          subPath: tls.crt
+          readOnly: true
+        - name: suma-monitoring-ssl
+          mountPath: /etc/nginx/ssl/suma-monitoring/certificate.key
+          subPath: tls.key
+          readOnly: true
+        - name: suma-webhook-ssl
+          mountPath: /etc/nginx/ssl/suma-webhook/certificate.crt
+          subPath: tls.crt
+          readOnly: true
+        - name: suma-webhook-ssl
+          mountPath: /etc/nginx/ssl/suma-webhook/certificate.key
+          subPath: tls.key
+          readOnly: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+            ephemeral-storage: "200Mi"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+            ephemeral-storage: "1Gi"
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: nginx-conf-d
+        configMap:
+          name: nginx-conf-d
+      - name: localhost-ssl
+        secret:
+          secretName: localhost-ssl
+      - name: suma-ecommerce-admin-ssl
+        secret:
+          secretName: suma-ecommerce-admin-ssl
+      - name: suma-ecommerce-client-ssl
+        secret:
+          secretName: suma-ecommerce-client-ssl
+      - name: suma-office-ssl
+        secret:
+          secretName: suma-office-ssl
+      - name: suma-monitoring-ssl
+        secret:
+          secretName: suma-monitoring-ssl
+      - name: suma-webhook-ssl
+        secret:
+          secretName: suma-webhook-ssl
+      - name: nginx-www
+        configMap:
+          name: nginx-www
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-www
+  namespace: nginx-system
+data:
+  index.html: |
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Welcome to Suma Honda Website</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #f8f9fa;
+          color: #333;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+        }
+        .container {
+          text-align: center;
+          max-width: 600px;
+          padding: 20px;
+          background-color: white;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+          border-radius: 8px;
+          margin: 20px;
+          width: 100%;
+        }
+        h1 {
+          font-size: 2.5rem;
+          color: #007bff;
+          margin-bottom: 20px;
+        }
+        p {
+          font-size: 1.125rem;
+          line-height: 1.6;
+          margin-bottom: 20px;
+        }
+        a {
+          text-decoration: none;
+          color: #dc3545;
+          font-weight: bold;
+          font-size: 1.25rem;
+        }
+        ul {
+          text-align: left;
+          display: inline-block;
+          margin: 20px 0;
+        }
+        li {
+          margin-bottom: 10px;
+        }
+        @media (max-width: 768px) {
+          h1 {
+            font-size: 2rem;
+          }
+          p {
+            font-size: 1rem;
+          }
+          a {
+            font-size: 1.125rem;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Welcome to Suma Honda Website</h1>
+        <p>This is the default page for <strong>suma-honda.id</strong></p>
+        <p>Available features:</p>
+        <ul>
+          <li><strong>Office Management System</strong></li>
+          <li><strong>E-commerce Platform</strong></li>
+        </ul>
+        <p>For more information, please contact your administrator.</p>
+      </div>
+    </body>
+    </html>

@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: haproxy-pdb
+  namespace: haproxy
+  labels:
+    app: haproxy-loadbalancer
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: haproxy-loadbalancer

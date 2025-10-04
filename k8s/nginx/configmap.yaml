@@ -1,0 +1,420 @@
+﻿apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: nginx-system
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    error_log /var/log/nginx/error.log notice;
+    pid /var/run/nginx.pid;
+
+    events {
+        worker_connections 1024;
+    }
+
+    http {
+        resolver kube-dns.kube-system.svc.cluster.local valid=10s;
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+
+        log_format main '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" "$http_x_forwarded_for"';
+        log_format detailed '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" rt=$request_time uct="$upstream_connect_time" uht="$upstream_header_time" urt="$upstream_response_time"';
+
+        access_log /var/log/nginx/access.log detailed;
+
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        types_hash_max_size 2048;
+
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+
+        # Pastikan semua server block di conf.d di-load
+        include /etc/nginx/conf.d/*.conf;
+
+        # Server block utama untuk semua request ke port 80
+        server {
+            listen 80 default_server;
+            server_name _;
+            location /health {
+                access_log off;
+                return 200 "healthy\n";
+                add_header Content-Type text/plain;
+            }
+            location /nginx_status {
+                stub_status on;
+                access_log off;
+                allow all;
+            }
+            # Jangan blokir semua request, arahkan ke index.html jika tidak match
+            location / {
+                root /var/www/html;
+                index index.html;
+                try_files $uri $uri/ /index.html;
+            }
+        }
+
+        # Server block untuk HTTPS jika diperlukan
+        server {
+            listen 443 ssl default_server;
+            server_name _;
+            ssl_certificate /etc/nginx/ssl/localhost/certificate.crt;
+            ssl_certificate_key /etc/nginx/ssl/localhost/certificate.key;
+            ssl_protocols TLSv1.2 TLSv1.3;
+            location /health {
+                access_log off;
+                return 200 "healthy\n";
+                add_header Content-Type text/plain;
+            }
+            location / {
+                root /var/www/html;
+                index index.html;
+                try_files $uri $uri/ /index.html;
+            }
+        }
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-conf-d
+  namespace: nginx-system
+data:
+  suma-office.conf: |
+    server {
+        listen 80;
+        server_name suma-office.test;
+
+        access_log /var/log/nginx/suma-office.access.log main;
+        error_log /var/log/nginx/suma-office.error.log;
+
+        location / {
+            # Sesuaikan dengan service dan namespace Kubernetes
+            proxy_pass http://suma-office-service.suma-office.svc.cluster.local:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $server_name;
+            
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 30s;
+            proxy_read_timeout 30s;
+            
+            proxy_buffering on;
+            proxy_buffer_size 4k;
+            proxy_buffers 8 4k;
+            
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+        }
+    }
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name suma-office.test;
+
+        ssl_certificate /etc/nginx/ssl/suma-office/certificate.crt;
+        ssl_certificate_key /etc/nginx/ssl/suma-office/certificate.key;
+
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+
+        # Security headers
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options DENY;
+        add_header X-XSS-Protection "1; mode=block";
+
+        location / {
+            proxy_pass http://suma-office-service.suma-office.svc.cluster.local:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $server_name;
+        }
+        location /health {
+            proxy_pass http://suma-office-service.suma-office.svc.cluster.local:8000/health;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+  suma-ecommerce-admin.conf: |
+    server {
+        listen 80;
+        server_name suma-ecommerce-admin.test;
+
+        access_log /var/log/nginx/suma-ecommerce-admin.access.log main;
+        error_log /var/log/nginx/suma-ecommerce-admin.error.log;
+
+        location / {
+            # Sesuaikan dengan service dan namespace Kubernetes
+            proxy_pass http://suma-ecommerce-admin-service.suma-ecommerce-admin.svc.cluster.local:3000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $server_name;
+            
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 30s;
+            proxy_read_timeout 30s;
+            
+            proxy_buffering on;
+            proxy_buffer_size 4k;
+            proxy_buffers 8 4k;
+            
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+        }
+    }
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name suma-ecommerce-admin.test;
+
+        ssl_certificate /etc/nginx/ssl/suma-ecommerce-admin/certificate.crt;
+        ssl_certificate_key /etc/nginx/ssl/suma-ecommerce-admin/certificate.key;
+
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+
+        # Security headers
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options DENY;
+        add_header X-XSS-Protection "1; mode=block";
+
+        location / {
+            proxy_pass http://suma-ecommerce-admin-service.suma-ecommerce-admin.svc.cluster.local:3000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $server_name;
+        }
+        location /health {
+            proxy_pass http://suma-ecommerce-admin-service.suma-ecommerce-admin.svc.cluster.local:3000/health;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+  suma-ecommerce-client.conf: |
+    server {
+        listen 80;
+        server_name suma-ecommerce-client.test;
+
+        access_log /var/log/nginx/suma-ecommerce-client.access.log main;
+        error_log /var/log/nginx/suma-ecommerce-client.error.log;
+
+        location / {
+            # Sesuaikan dengan service dan namespace Kubernetes
+            proxy_pass http://suma-ecommerce-client-service.suma-ecommerce-client.svc.cluster.local:3000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $server_name;
+            
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 30s;
+            proxy_read_timeout 30s;
+            
+            proxy_buffering on;
+            proxy_buffer_size 4k;
+            proxy_buffers 8 4k;
+            
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+        }
+    }
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name suma-ecommerce-client.test;
+
+        ssl_certificate /etc/nginx/ssl/suma-ecommerce-client/certificate.crt;
+        ssl_certificate_key /etc/nginx/ssl/suma-ecommerce-client/certificate.key;
+
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+
+        # Security headers
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options DENY;
+        add_header X-XSS-Protection "1; mode=block";
+
+        location / {
+            proxy_pass http://suma-ecommerce-client-service.suma-ecommerce-client.svc.cluster.local:3000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $server_name;
+        }
+        location /health {
+            proxy_pass http://suma-ecommerce-client-service.suma-ecommerce-client.svc.cluster.local:3000/health;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+  suma-monitoring.conf: |
+    server {
+        listen 80;
+        server_name suma-monitoring.test;
+
+        access_log /var/log/nginx/suma-monitoring.access.log main;
+        error_log /var/log/nginx/suma-monitoring.error.log;
+
+        location / {
+            # Update: gunakan service grafana di namespace monitoring
+            proxy_pass http://grafana.monitoring.svc.cluster.local:3000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $server_name;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 30s;
+            proxy_read_timeout 30s;
+            proxy_buffering on;
+            proxy_buffer_size 4k;
+            proxy_buffers 8 4k;
+            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+        }
+    }
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name suma-monitoring.test;
+
+        ssl_certificate /etc/nginx/ssl/suma-monitoring/certificate.crt;
+        ssl_certificate_key /etc/nginx/ssl/suma-monitoring/certificate.key;
+
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+
+        # Security headers
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options DENY;
+        add_header X-XSS-Protection "1; mode=block";
+
+        location / {
+            proxy_pass http://grafana.monitoring.svc.cluster.local:3000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $server_name;
+        }
+        location /health {
+            proxy_pass http://grafana.monitoring.svc.cluster.local:3000/api/health;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+  suma-webhook.conf: |
+    server {
+        listen 80;
+        server_name suma-webhook.test;
+        access_log /var/log/nginx/suma-webhook.test.access.log detailed;
+        error_log /var/log/nginx/suma-webhook.test.error.log;
+
+        location /nginx_status {
+            stub_status on;
+            access_log off;
+            allow all;
+        }
+        return 301 https://$server_name$request_uri;
+    }
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name suma-webhook.test;
+
+        # SSL Configuration for suma-webhook.test domain only
+        ssl_certificate /etc/nginx/ssl/suma-webhook/certificate.crt;
+        ssl_certificate_key /etc/nginx/ssl/suma-webhook/certificate.key;
+
+        # SSL Security Settings
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+
+        # Security headers
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options DENY;
+        add_header X-XSS-Protection "1; mode=block";
+
+        location / {
+            proxy_pass http://192.168.1.125:5000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $server_name;
+        }
+
+        # Health check
+        location /health {
+            proxy_pass http://192.168.1.125:5000/health;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+    # Custom 404 error page
+    error_page 404 /index.html;
+    }
+  default.conf: |
+    # Jangan gunakan 'default_server' di listen 80 pada file ini!
+    server {
+        listen 80;
+        server_name localhost 127.0.0.1;
+
+        access_log /var/log/nginx/default.access.log main;
+        error_log /var/log/nginx/default.error.log;
+
+        location /health {
+            access_log off;
+            return 200 "NGINX Healthy\n";
+            add_header Content-Type text/plain;
+        }
+
+        location / {
+            root /var/www/html;
+            index index.html;
+            try_files $uri $uri/ /index.html;
+        }
+    }

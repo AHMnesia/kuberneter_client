@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy-service
+  namespace: haproxy
+  labels:
+    app: haproxy-loadbalancer
+spec:
+  type: ClusterIP  # Internal only - API load balancer for backend services
+  ports:
+  - name: api-port
+    port: 8888
+    targetPort: 8888
+    protocol: TCP
+  - name: stats-port
+    port: 8404
+    targetPort: 8404
+    protocol: TCP
+  selector:
+    app: haproxy-loadbalancer
+  sessionAffinity: None

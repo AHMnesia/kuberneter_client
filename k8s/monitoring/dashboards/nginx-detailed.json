@@ -1,0 +1,117 @@
+{
+  "uid": "nginx-detailed",
+  "title": "🖥️ NGINX Detailed Monitoring",
+  "tags": ["nginx", "proxy", "detailed"],
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "title": "🔌 NGINX Connection Status",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "nginx_connections_active",
+          "legendFormat": "Active"
+        },
+        {
+          "expr": "nginx_connections_reading",
+          "legendFormat": "Reading"
+        },
+        {
+          "expr": "nginx_connections_writing",
+          "legendFormat": "Writing"
+        },
+        {
+          "expr": "nginx_connections_waiting",
+          "legendFormat": "Waiting"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "datasource": "Prometheus",
+      "title": "📊 NGINX Request Rate",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(nginx_http_requests_total[5m])",
+          "legendFormat": "Requests/sec"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 }
+    },
+    {
+      "datasource": "Prometheus",
+      "title": "📈 NGINX Response Codes",
+      "type": "piechart",
+      "targets": [
+        {
+          "expr": "probe_http_status_code{job=\"nginx-health\"}",
+          "legendFormat": "HTTP {{__value__}}",
+          "instant": true
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 }
+    },
+    {
+      "datasource": "Prometheus",
+      "title": "🌐 NGINX Backend Health",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "probe_success{job=\"nginx-health\"}",
+          "legendFormat": "HTTP Health Check",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true
+            },
+            "renameByName": {
+              "job": "Service",
+              "instance": "Endpoint",
+              "Value": "Health Status"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Health Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "0": { "text": "FAILED", "color": "red" },
+                      "1": { "text": "HEALTHY", "color": "green" }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 12 }
+    }
+  ],
+  "time": { "from": "now-1h", "to": "now" }
+}

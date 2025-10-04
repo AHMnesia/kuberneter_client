@@ -1,0 +1,245 @@
+{
+  "uid": "infrastructure",
+  "title": "🏗️ Infrastructure Monitoring",
+  "tags": ["infrastructure", "cluster", "resources"],
+  "refresh": "5s",
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "title": "💾 Container Memory Usage by Namespace",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(container_memory_usage_bytes{namespace=~\"nginx-system|suma-ecommerce|suma-ecommerce-admin|suma-ecommerce-client|suma-office|monitoring|kube-system\", pod!=\"\"}) by (namespace) / 1024 / 1024",
+          "legendFormat": "{{namespace}} (MB)"
+        }
+      ],
+      "yAxes": [
+        {
+          "label": "Memory (MB)",
+          "min": 0
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "datasource": "Prometheus",
+      "title": "🖥️ Container CPU Usage by Namespace",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"nginx-system|suma-ecommerce|suma-ecommerce-admin|suma-ecommerce-client|suma-office|monitoring|kube-system\", pod!=\"\"}[5m])) by (namespace) * 100",
+          "legendFormat": "{{namespace}} (%)"
+        }
+      ],
+      "yAxes": [
+        {
+          "label": "CPU Usage (%)",
+          "min": 0
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "datasource": "Prometheus",
+      "title": "📊 Active Pods by Namespace",
+      "type": "piechart",
+      "targets": [
+        {
+          "expr": "count by (namespace) (container_start_time_seconds{namespace=~\"nginx-system|suma-ecommerce|suma-ecommerce-admin|suma-ecommerce-client|suma-office|monitoring|kube-system\", pod!=\"\"})",
+          "legendFormat": "{{namespace}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "datasource": "Prometheus",
+      "title": "🔄 Container Restarts",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(increase(container_start_time_seconds{namespace=~\"nginx-system|suma-ecommerce|suma-ecommerce-admin|suma-ecommerce-client|suma-office|monitoring\"}[1h]))",
+          "instant": true,
+          "legendFormat": "Container Restarts (1h)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 8 }
+    },
+    {
+      "datasource": "Prometheus",
+      "title": "📈 Service Health Overview",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "up{job=\"nginx\"}",
+          "instant": true,
+          "legendFormat": "NGINX Exporter"
+        },
+        {
+          "expr": "up{job=\"prometheus\"}",
+          "instant": true,
+          "legendFormat": "Prometheus"
+        },
+        {
+          "expr": "up{job=\"blackbox\"}",
+          "instant": true,
+          "legendFormat": "Blackbox Exporter"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": { "text": "🔴 DOWN", "color": "red" },
+                "1": { "text": "🟢 UP", "color": "green" }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "UNKNOWN"
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 12 }
+    },
+    {
+      "datasource": "Prometheus",
+      "title": "🌐 Application Health Status",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "probe_success",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true
+            },
+            "renameByName": {
+              "job": "Service",
+              "instance": "Endpoint",
+              "Value": "Health Status"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Health Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "0": { "text": "🔴 DOWN", "color": "red" },
+                      "1": { "text": "🟢 UP", "color": "green" }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 }
+    },
+    {
+      "datasource": "Prometheus",
+      "title": "🔋 Resource Usage Summary",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(container_memory_usage_bytes{namespace=~\"suma.*|nginx-system|monitoring\", pod!=\"\"}) / 1024 / 1024 / 1024",
+          "instant": true,
+          "legendFormat": "Total Memory (GB)"
+        },
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"suma.*|nginx-system|monitoring\", pod!=\"\"}[5m])) * 100",
+          "instant": true,
+          "legendFormat": "Total CPU (%)"
+        },
+        {
+          "expr": "count(container_start_time_seconds{namespace=~\"suma.*|nginx-system|monitoring\", pod!=\"\"})",
+          "instant": true,
+          "legendFormat": "Total Containers"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 80 }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*Memory.*"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*CPU.*"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 }
+    }
+  ],
+  "time": { "from": "now-1h", "to": "now" }
+}

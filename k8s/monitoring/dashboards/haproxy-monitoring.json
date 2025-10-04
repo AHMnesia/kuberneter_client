@@ -1,0 +1,380 @@
+{
+  "uid": "haproxy-monitoring",
+  "title": "🦡 HAProxy Advanced Monitoring",
+  "tags": ["haproxy", "loadbalancer", "proxy", "failover"],
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "datasource": "Prometheus",
+      "title": "🚦 HAProxy Service Status",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "haproxy_up",
+          "instant": true,
+          "legendFormat": "HAProxy Service"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": { "text": "🔴 DOWN", "color": "red" },
+                "1": { "text": "🟢 UP", "color": "green" }
+              },
+              "type": "value"
+            }
+          ]
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "datasource": "Prometheus",
+      "title": "🥇 Primary Server",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "haproxy_server_up{server=\"primary_api\"}",
+          "instant": true,
+          "legendFormat": "HAProxy Status"
+        },
+        {
+          "expr": "probe_success{job=\"haproxy-api-primary-health\"}",
+          "instant": true,
+          "legendFormat": "TCP Ping"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": { "text": "🔴 DOWN", "color": "red" },
+                "1": { "text": "🟢 UP", "color": "green" }
+              },
+              "type": "value"
+            }
+          ]
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 }
+    },
+    {
+      "id": 3,
+      "datasource": "Prometheus",
+      "title": "🥈 Backup Server",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "haproxy_server_up{server=\"backup_api\"}",
+          "instant": true,
+          "legendFormat": "HAProxy Status"
+        },
+        {
+          "expr": "probe_success{job=\"haproxy-api-backup-health\"}",
+          "instant": true,
+          "legendFormat": "TCP Ping"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": { "text": "🔴 DOWN", "color": "red" },
+                "1": { "text": "🟢 UP", "color": "green" }
+              },
+              "type": "value"
+            }
+          ]
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 }
+    },
+    {
+      "id": 4,
+      "datasource": "Prometheus",
+      "title": "⚡ Health Check Duration",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "haproxy_server_check_duration_seconds{server=\"primary_api\"} * 1000",
+          "legendFormat": "🥇 Primary HAProxy Check (ms)"
+        },
+        {
+          "expr": "haproxy_server_check_duration_seconds{server=\"backup_api\"} * 1000",
+          "legendFormat": "🥈 Backup HAProxy Check (ms)"
+        },
+        {
+          "expr": "probe_duration_seconds{job=\"haproxy-api-primary-health\"} * 1000",
+          "legendFormat": "🥇 Primary TCP Ping (ms)"
+        },
+        {
+          "expr": "probe_duration_seconds{job=\"haproxy-api-backup-health\"} * 1000",
+          "legendFormat": "🥈 Backup TCP Ping (ms)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 }
+    },
+    {
+      "id": 5,
+      "datasource": "Prometheus",
+      "title": "📈 Request Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(haproxy_frontend_http_requests_total{frontend=\"api_frontend\"}[5m]) * 60",
+          "legendFormat": "Frontend Requests/min"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqpm",
+          "min": 0
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 }
+    },
+    {
+      "id": 6,
+      "datasource": "Prometheus",
+      "title": "📊 Current Sessions",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "haproxy_frontend_current_sessions{frontend=\"api_frontend\"}",
+          "instant": true,
+          "legendFormat": "Active Sessions"
+        },
+        {
+          "expr": "haproxy_frontend_max_sessions{frontend=\"api_frontend\"}",
+          "instant": true,
+          "legendFormat": "Max Sessions"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 12 }
+    },
+    {
+      "id": 7,
+      "datasource": "Prometheus",
+      "title": "💾 Data Transfer",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(haproxy_frontend_bytes_in_total{frontend=\"api_frontend\"}[5m])",
+          "legendFormat": "Bytes In/sec"
+        },
+        {
+          "expr": "rate(haproxy_frontend_bytes_out_total{frontend=\"api_frontend\"}[5m])",
+          "legendFormat": "Bytes Out/sec"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0
+        }
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 12 }
+    },
+    {
+      "id": 8,
+      "datasource": "Prometheus",
+      "title": "❌ Server Downtime",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "haproxy_server_downtime_seconds_total{server=\"primary_api\"} / 60",
+          "legendFormat": "🥇 Primary Downtime (min)"
+        },
+        {
+          "expr": "haproxy_server_downtime_seconds_total{server=\"backup_api\"} / 60",
+          "legendFormat": "🥈 Backup Downtime (min)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "min",
+          "min": 0
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 }
+    },
+    {
+      "id": 9,
+      "datasource": "Prometheus",
+      "title": "🔥 Error Rates",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(haproxy_server_connection_errors_total{server=\"primary_api\"}[5m])",
+          "legendFormat": "🥇 Primary Connection Errors/sec"
+        },
+        {
+          "expr": "rate(haproxy_server_connection_errors_total{server=\"backup_api\"}[5m])",
+          "legendFormat": "🥈 Backup Connection Errors/sec"
+        },
+        {
+          "expr": "rate(haproxy_server_response_errors_total{server=\"primary_api\"}[5m])",
+          "legendFormat": "🥇 Primary Response Errors/sec"
+        },
+        {
+          "expr": "rate(haproxy_server_response_errors_total{server=\"backup_api\"}[5m])",
+          "legendFormat": "🥈 Backup Response Errors/sec"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 }
+    },
+    {
+      "id": 10,
+      "datasource": "Prometheus",
+      "title": "🌐 Server Configuration",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "haproxy_server_up",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true
+            },
+            "renameByName": {
+              "server": "Server Name",
+              "backend": "Backend Pool",
+              "Value": "Status"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "0": { "text": "🔴 DOWN", "color": "red" },
+                      "1": { "text": "🟢 UP", "color": "green" }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 }
+    },
+    {
+      "id": 11,
+      "datasource": "Prometheus",
+      "title": "📋 Health Check Failures",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "haproxy_server_check_failures_total{server=\"primary_api\"}",
+          "legendFormat": "🥇 Primary Check Failures"
+        },
+        {
+          "expr": "haproxy_server_check_failures_total{server=\"backup_api\"}",
+          "legendFormat": "🥈 Backup Check Failures"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 34 }
+    },
+    {
+      "id": 12,
+      "datasource": "Prometheus",
+      "title": "⚙️ Server Weights",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "haproxy_server_weight{server=\"primary_api\"}",
+          "instant": true,
+          "legendFormat": "🥇 Primary Weight"
+        },
+        {
+          "expr": "haproxy_server_weight{server=\"backup_api\"}",
+          "instant": true,
+          "legendFormat": "🥈 Backup Weight"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 34 }
+    }
+  ],
+  "time": { "from": "now-1h", "to": "now" }
+}
