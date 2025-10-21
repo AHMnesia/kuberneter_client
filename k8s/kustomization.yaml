@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Urutan apply resources untuk menghindari dependency error (namespace, cert-manager, dll. dulu)
+resources:
+  # 1. Infrastruktur pendukung
+  - certs/
+  - argocd/
+  - nginx/
+  - haproxy/
+  - monitoring/
+
+  # 2. Aplikasi utama
+  - suma-ecommerce-admin/
+  - suma-ecommerce-client/
+  - suma-office/
+

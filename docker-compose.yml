@@ -45,7 +45,13 @@ services:
       - NGROK_AUTHTOKEN=2o8k6ntZebniF9fI9Osl1XQG7Ih_6ZjNh7W8QF4E34bJGH7aA
     depends_on:
       - suma-ecommerce-client
-
+  ngrok-chat:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    network_mode: host
+    command: http 30880 --subdomain=suma-chat
+    environment:
+      - NGROK_AUTHTOKEN=2o8k6ntZebniF9fI9Osl1XQG7Ih_6ZjNh7W8QF4E34bJGH7aA
 volumes:
   node_modules:
     driver: local
