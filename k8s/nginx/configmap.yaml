@@ -340,62 +340,33 @@ data:
             proxy_set_header X-Forwarded-Proto $scheme;
         }
     }
-  suma-webhook.conf: |
+  suma-argo.conf: |
     server {
         listen 80;
-        server_name suma-webhook.test;
-        access_log /var/log/nginx/suma-webhook.test.access.log detailed;
-        error_log /var/log/nginx/suma-webhook.test.error.log;
+        server_name suma-argo.test;
 
-        location /nginx_status {
-            stub_status on;
-            access_log off;
-            allow all;
+        location / {
+            proxy_pass http://argocd-server.argocd.svc.cluster.local:443;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
-        return 301 https://$server_name$request_uri;
     }
     server {
         listen 443 ssl;
-        http2 on;
-        server_name suma-webhook.test;
+        server_name suma-argo.test;
 
-        # SSL Configuration for suma-webhook.test domain only
-        ssl_certificate /etc/nginx/ssl/suma-webhook/certificate.crt;
-        ssl_certificate_key /etc/nginx/ssl/suma-webhook/certificate.key;
-
-        # SSL Security Settings
-        ssl_protocols TLSv1.2 TLSv1.3;
-        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
-        ssl_prefer_server_ciphers off;
-        ssl_session_cache shared:SSL:10m;
-        ssl_session_timeout 10m;
-
-        # Security headers
-        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-        add_header X-Content-Type-Options nosniff;
-        add_header X-Frame-Options DENY;
-        add_header X-XSS-Protection "1; mode=block";
+        ssl_certificate /etc/nginx/ssl/suma-argo.test.crt;
+        ssl_certificate_key /etc/nginx/ssl/suma-argo.test.key;
 
         location / {
-            proxy_pass http://192.168.1.125:5000;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-Host $server_name;
-        }
-
-        # Health check
-        location /health {
-            proxy_pass http://192.168.1.125:5000/health;
+            proxy_pass https://argocd-server.argocd.svc.cluster.local:443;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
         }
-
-    # Custom 404 error page
-    error_page 404 /index.html;
     }
   default.conf: |
     # Jangan gunakan 'default_server' di listen 80 pada file ini!

@@ -1,0 +1,53 @@
+kubectl -n suma-chat port-forward svc/ngrok 4040:4040
+
+# Instalasi Argo CD di Kubernetes
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# Tunggu hingga semua pod berjalan
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# Dapatkan password awal untuk user admin
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | ForEach-Object { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_)) }
+
+# project file: k8s-application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: suma-k8s
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/AHMnesia/kuberneter_client.git'  # Ganti dengan URL Git repo Anda
+    targetRevision: HEAD  # Branch (misalnya 'main' jika bukan HEAD)
+    path: 'k8s'  # Path ke folder YAML di repo
+  destination:
+    server: 'https://kubernetes.default.svc'  # Untuk cluster lokal
+    namespace: 'default'  # Namespace tujuan (atau kosongkan)
+  syncPolicy:
+    automated:
+      prune: true  # Hapus resource yang tidak ada di Git
+      selfHeal: true  # Auto-sync jika ada drift
+
+# cara restart kube-dns
+# note: ini akan menyebabkan downtime sementara pada DNS
+# dilakukan mengarah ke github tidakbisa
+kubectl delete pod -n kube-system -l k8s-app=kube-dns
+
+
+
+# Instalasi Tekton CI/CD di Kubernetes
+kubectl create namespace tekton-pipelines
+kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml  # Untuk triggers dari Git
+kubectl apply -f https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml  # Opsional, untuk UI
+
+# expose port 9097
+kubectl -n tekton-pipelines port-forward svc/tekton-dashboard 9097:9097
+
+# Terapkan contoh pipeline Tekton dari file lokal
+kubectl apply -f c:\docker\tekton
+
+
+

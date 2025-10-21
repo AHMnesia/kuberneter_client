@@ -113,6 +113,14 @@ spec:
           mountPath: /etc/nginx/ssl/suma-webhook/certificate.key
           subPath: tls.key
           readOnly: true
+        - name: suma-argo-ssl
+          mountPath: /etc/nginx/ssl/suma-argo.test.crt
+          subPath: tls.crt
+          readOnly: true
+        - name: suma-argo-ssl
+          mountPath: /etc/nginx/ssl/suma-argo.test.key
+          subPath: tls.key
+          readOnly: true
         resources:
           requests:
             memory: "128Mi"
@@ -147,6 +155,9 @@ spec:
       - name: suma-webhook-ssl
         secret:
           secretName: suma-webhook-ssl
+      - name: suma-argo-ssl
+        secret:
+          secretName: suma-argo-ssl
       - name: nginx-www
         configMap:
           name: nginx-www
