@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   # 1. Infrastruktur pendukung
   - vendors/
+  - certs/
   # - nginx/
   - haproxy/
   - monitoring/
