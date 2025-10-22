@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: suma-office.test
+  - host: suma-office.local
     http:
       paths:
       - path: /
@@ -22,5 +22,5 @@ spec:
               number: 8000
   tls:
   - hosts:
-    - suma-office.test
+    - suma-office.local
     secretName: suma-office-tls
