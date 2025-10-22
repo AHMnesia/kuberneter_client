@@ -124,11 +124,11 @@ data:
             target_label: instance
           - target_label: __address__
             replacement: blackbox-exporter.monitoring.svc.cluster.local:9115
-
-      # Suma Webhook health check via blackbox exporter
-      - job_name: 'suma-webhook-health'
+        
+      # Ingress NGINX health check via blackbox exporter
+      - job_name: 'ingress-nginx-health'
         static_configs:
-          - targets: ['192.168.1.125:5000/health']
+          - targets: ['http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80/healthz']
         metrics_path: /probe
         params:
           module: [http_2xx]
@@ -141,7 +141,6 @@ data:
             target_label: instance
           - target_label: __address__
             replacement: blackbox-exporter.monitoring.svc.cluster.local:9115
-
     # ========================================================================================================
     #                                           Health Checks Finish
     # ========================================================================================================
@@ -151,12 +150,31 @@ data:
         static_configs:
           - targets: ['localhost:9090']
 
-      # NGINX metrics (from nginx-exporter)
-      - job_name: 'nginx'
-        static_configs:
-          - targets: ['nginx-exporter.monitoring.svc.cluster.local:9113']
-        scrape_interval: 15s
+      # Ingress metrics
+      - job_name: 'ingress-nginx'
+        kubernetes_sd_configs:
+        - role: endpoints
+          namespaces:
+            names: ['ingress-nginx']
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_service_name]
+          action: keep
+          regex: ingress-nginx-controller-metrics
+        - source_labels: [__meta_kubernetes_endpoint_port_name]
+          action: keep
+          regex: metrics
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+        - source_labels: [__meta_kubernetes_pod_ip]
+          target_label: instance
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: kubernetes_namespace
+        - source_labels: [__meta_kubernetes_service_name]
+          target_label: kubernetes_service
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: kubernetes_pod
         metrics_path: /metrics
+        scrape_interval: 15s
 
       # HAProxy metrics (from haproxy-exporter)
       - job_name: 'haproxy'
