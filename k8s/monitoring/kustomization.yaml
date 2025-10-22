@@ -10,3 +10,4 @@ resources:
   - pvc.yaml
   - rbac.yaml
   - service.yaml
+  - ingress.yaml

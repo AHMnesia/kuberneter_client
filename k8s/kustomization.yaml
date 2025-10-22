@@ -4,7 +4,8 @@ kind: Kustomization
 # Urutan apply resources untuk menghindari dependency error (namespace, cert-manager, dll. dulu)
 resources:
   # 1. Infrastruktur pendukung
-  - nginx/
+  - vendors/
+  # - nginx/
   - haproxy/
   - monitoring/
 
@@ -12,3 +13,4 @@ resources:
   - suma-ecommerce-admin/
   - suma-ecommerce-client/
   - suma-office/
+  - argocd/
