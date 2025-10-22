@@ -99,18 +99,3 @@ spec:
     protocol: TCP
   selector:
     app: node-exporter
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: nginx-exporter
-  namespace: monitoring
-  labels:
-    app: nginx-exporter
-spec:
-  ports:
-    - name: http
-      port: 9113
-      targetPort: 9113
-  selector:
-    app: nginx-exporter
