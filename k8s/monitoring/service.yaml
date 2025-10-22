@@ -99,3 +99,25 @@ spec:
     protocol: TCP
   selector:
     app: node-exporter
+  
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ingress-nginx-servicemonitor
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+  namespaceSelector:
+    matchNames:
+      - ingress-nginx
+  endpoints:
+    - port: "10254"
+      path: /metrics
+      interval: 15s
+      scheme: http
+      honorLabels: true
