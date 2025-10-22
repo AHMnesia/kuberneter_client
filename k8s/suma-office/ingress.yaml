@@ -20,6 +20,34 @@ spec:
             name: suma-office-service
             port:
               number: 8000
+      - path: /css/
+        pathType: Prefix
+        backend:
+          service:
+            name: suma-office-service
+            port:
+              number: 8000
+      - path: /js/
+        pathType: Prefix
+        backend:
+          service:
+            name: suma-office-service
+            port:
+              number: 8000
+      - path: /images/
+        pathType: Prefix
+        backend:
+          service:
+            name: suma-office-service
+            port:
+              number: 8000
+      - path: /build/
+        pathType: Prefix
+        backend:
+          service:
+            name: suma-office-service
+            port:
+              number: 8000
   tls:
   - hosts:
     - suma-office.local
